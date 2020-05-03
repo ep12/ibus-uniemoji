@@ -18,11 +18,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+from collections import Counter, defaultdict
+import inspect
+import json
+import logging
 import os
 import re
 import sys
-import json
-from collections import Counter, defaultdict
 
 from difflib import SequenceMatcher
 
@@ -44,12 +46,27 @@ try:
 except ImportError:
     SYS_CONF_DIR = '/etc'
 
-debug_on = True
+
+log_file = os.path.expanduser('~/.local/share/uniemoji/uniemoji.log')
+if not os.path.isdir(os.path.dirname(log_file)):
+    os.makedirs(os.path.dirname(log_file))
+
+logging.basicConfig(filename=log_file, filemode='a', style='{',
+                    format='[{levelname:^8}] {asctime} {module}:{funcName}:{lineno}: {message}')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
 def debug(*a, **kw):
-    if debug_on:
-        print(*a, **kw)
+    """Do not use this function."""
+    f = inspect.currentframe().f_back
+    logger.warning('old Debug: %s', f)
+    logger.debug('Raw: %r, %r', a, kw)
+    print(*a, **kw)
+
 
 __base_dir__ = os.path.dirname(__file__)
+
 
 VALID_CATEGORIES = (
     'Sc', # Symbol, currency
@@ -143,6 +160,7 @@ class UniEmojiChar(object):
 
 class UniEmoji():
     def __init__(self):
+        logger.debug('Initialising UniEmoji class...')
         super(UniEmoji, self).__init__()
         self.table = defaultdict(UniEmojiChar)
         self.unicode_chars_to_names = {}
@@ -255,16 +273,18 @@ class UniEmoji():
                     continue
 
                 fields = line.split(';')
-                unicode_str = ''.join(chr(int(codepoint, 16)) for codepoint in fields[0].strip().split(' '))
+                unicode_str = ''.join(chr(int(codepoint, 16))
+                                      for codepoint in fields[0].strip().split(' '))
                 description = fields[2][:fields[2].find('#')].strip()
                 if unicode_str not in self.unicode_chars_to_names:
                     self.unicode_chars_to_names[unicode_str] = description
                     self.table[description] = UniEmojiChar(unicode_str)
 
         # Load custom file(s)
+        logger.info('Loading custom file(s)')
         for d in reversed(SETTINGS_DIRS):
             custom_filename = os.path.join(d, 'custom.json')
-            debug('Loading custom emoji from {}'.format(custom_filename))
+            logger.debug('Loading custom emoji from %s', custom_filename)
             if os.path.isfile(custom_filename):
                 custom_table = None
                 try:
@@ -272,13 +292,14 @@ class UniEmoji():
                         custom_table = json.loads(f.read())
                 except:
                     error = sys.exc_info()[1]
-                    debug(error)
+                    logger.error('Error loading %s: %s', custom_filename, error)
                     self.table = {
                         'Failed to load custom file {}: {}'.format(custom_filename, error): 'ERROR'
-                    }
+                    }  # ??
                     break
                 else:
-                    debug(custom_table)
+                    logger.debug('%d definitions loaded from %s',
+                                 len(custom_table), custom_filename)
                     for k, v in custom_table.items():
                         self.table[k] = UniEmojiChar(v, is_custom=True)
 
@@ -457,6 +478,7 @@ class UniEmoji():
                 append_result(unicode_str, display_str)
 
         return results
+
 
 if __name__ == '__main__':
     query_string = ' '.join(sys.argv[1:])
