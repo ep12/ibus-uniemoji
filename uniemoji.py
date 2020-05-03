@@ -130,20 +130,24 @@ VALID_RANGES = (
     (0x1f900, 0x1f9ff), # Supplemental Symbols and Pictographs
 )
 
+
 def in_range(code):
-    return any(x <= code <= y for x,y in VALID_RANGES)
+    return any(x <= code <= y for x, y in VALID_RANGES)
+
 
 if xdg:
     SETTINGS_DIRS = list(xdg.BaseDirectory.load_config_paths('uniemoji'))
 else:
-    SETTINGS_DIRS = [d for d in [os.path.expanduser('~/.config/uniemoji'), '{}/xdg/uniemoji'.format(SYS_CONF_DIR)]
+    SETTINGS_DIRS = [d for d in [os.path.expanduser('~/.config/uniemoji'),
+                                 '{}/xdg/uniemoji'.format(SYS_CONF_DIR)]
                      if os.path.isdir(d)]
 
 ###########################################################################
 CANDIDATE_UNICODE = 0
 CANDIDATE_ALIAS = 1
 
-class UniEmojiChar(object):
+
+class UniEmojiChar:
     def __init__(self, unicode_str=None, is_emojione=False, is_custom=False):
         self.unicode_str = unicode_str
         self.aliasing = []
@@ -158,7 +162,7 @@ class UniEmojiChar(object):
             self.aliasing)
 
 
-class UniEmoji():
+class UniEmoji:
     def __init__(self):
         logger.debug('Initialising UniEmoji class...')
         super(UniEmoji, self).__init__()
@@ -182,7 +186,8 @@ class UniEmoji():
                 fields = line.split(';')
                 if '..' in fields[0]:
                     continue
-                unicode_str = ''.join(chr(int(codepoint, 16)) for codepoint in fields[0].strip().split(' '))
+                unicode_str = ''.join(chr(int(codepoint, 16))
+                                      for codepoint in fields[0].strip().split(' '))
                 description = fields[2][:fields[2].find('#')].strip()
                 if description.startswith('flag: '):
                     description = 'flag of ' + description[6:]
@@ -216,7 +221,8 @@ class UniEmoji():
         alias_counter = Counter()
         temp_alias_table = defaultdict(set)
 
-        emojione_data = json.load(open(os.path.join(__base_dir__, 'emojione.json'), encoding='utf-8'))
+        emojione_data = json.load(open(os.path.join(__base_dir__, 'emojione.json'),
+                                       encoding='utf-8'))
         for emoji_info in emojione_data.values():
 
             codepoints = emoji_info['code_points']['output']
@@ -290,7 +296,7 @@ class UniEmoji():
                 try:
                     with open(custom_filename, encoding='utf-8') as f:
                         custom_table = json.loads(f.read())
-                except:
+                except Exception:
                     error = sys.exc_info()[1]
                     logger.error('Error loading %s: %s', custom_filename, error)
                     self.table = {
@@ -332,16 +338,22 @@ class UniEmoji():
         matched = []
 
         for candidate, candidate_info in candidates.items():
-            if len(query) > len(candidate): continue
+            if len(query) > len(candidate):
+                continue
 
             candidate_lowercase = candidate.lower()
 
             if query == candidate_lowercase:
                 # Exact match
-                if candidate_info.unicode_str:
-                    matched.append((20, 0, candidate, CANDIDATE_UNICODE))
-                if candidate_info.aliasing:
-                    matched.append((5, 0, candidate, CANDIDATE_ALIAS))
+                # TODO: attribute error?
+                try:
+                    if candidate_info.unicode_str:
+                        matched.append((20, 0, candidate, CANDIDATE_UNICODE))
+                    if candidate_info.aliasing:
+                        matched.append((5, 0, candidate, CANDIDATE_ALIAS))
+                except AttributeError as e:
+                    logger.critical('AttributeError: %s', e)
+                    return ['AttributeError'] + matched
             else:
                 # Substring match
                 word_ixs = []
@@ -369,16 +381,20 @@ class UniEmoji():
                     # Receive a boost if the substring matches a word or a prefix
                     score += 20 * exact_word_match + 10 * prefix_match
 
-                    if candidate_info.unicode_str:
-                        matched.append((10, score, candidate, CANDIDATE_UNICODE))
-                    if candidate_info.aliasing:
-                        matched.append((5, score, candidate, CANDIDATE_ALIAS))
+                    try:  # TODO:
+                        if candidate_info.unicode_str:
+                            matched.append((10, score, candidate, CANDIDATE_UNICODE))
+                        if candidate_info.aliasing:
+                            matched.append((5, score, candidate, CANDIDATE_ALIAS))
+                    except AttributeError as e:
+                        logger.critical('AttributeError: %s', e)
+                        return ['AttributeError'] + matched
                 else:
                     # Levenshtein distance
                     score = 0
                     if Levenshtein is None:
                         opcodes = SequenceMatcher(None, query, candidate_lowercase,
-                            autojunk=False).get_opcodes()
+                                                  autojunk=False).get_opcodes()
                     else:
                         opcodes = Levenshtein.opcodes(query, candidate_lowercase)
                     for (tag, i1, i2, j1, j2) in opcodes:
@@ -399,10 +415,14 @@ class UniEmoji():
                             elif [j2] == ' ':
                                 score += 1
                     if score > 0:
-                        if candidate_info.unicode_str:
-                            matched.append((0, score, candidate, CANDIDATE_UNICODE))
-                        if candidate_info.aliasing:
-                            matched.append((0, score, candidate, CANDIDATE_ALIAS))
+                        try:  # TODO
+                            if candidate_info.unicode_str:
+                                matched.append((0, score, candidate, CANDIDATE_UNICODE))
+                            if candidate_info.aliasing:
+                                matched.append((0, score, candidate, CANDIDATE_ALIAS))
+                        except AttributeError as e:
+                            logger.critical('AttributeError: %s', e)
+                            return ['AttributeError'] + matched
 
         # The first two fields are sorted in reverse.
         # The third text field is sorted by the length of the string, then alphabetically.
@@ -435,7 +455,8 @@ class UniEmoji():
             append_result(ascii_match, display_str)
 
         # Look for a fuzzy match against a description
-        for level, score, name, candidate_type in self._filter(query_string.lower()):
+        # for level, score, name, candidate_type in self._filter(query_string.lower()):
+        for _, _, name, candidate_type in self._filter(query_string.lower()):
             uniemoji_char = self.table[name]
 
             # Since we have several sources (UnicodeData.txt, EmojiOne),
