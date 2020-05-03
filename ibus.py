@@ -39,10 +39,22 @@ from uniemoji import UniEmoji
 
 __base_dir__ = os.path.dirname(__file__)
 
-debug_on = True
+log_file = os.path.expanduser('~/.local/share/uniemoji/ibus.log')
+if not os.path.isdir(os.path.dirname(log_file)):
+    os.makedirs(os.path.dirname(log_file))
+
+logging.basicConfig(filename=log_file, filemode='a', style='{',
+                    format='[{levelname:^8}] {asctime} {module}:{funcName}:{lineno}: {message}')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
 def debug(*a, **kw):
-    if debug_on:
-        print(*a, **kw)
+    """Do not use this function."""
+    f = inspect.currentframe().f_back
+    logger.warning('old Debug: %s', f)
+    logger.debug('Raw: %r, %r', a, kw)
+    print(*a, **kw)
 
 # gee thank you IBus :-)
 num_keys = []
@@ -72,8 +84,7 @@ class UniEmojiIBusEngine(IBus.Engine):
         self.preedit_string = ''
         self.lookup_table = IBus.LookupTable.new(10, 0, True, True)
         self.prop_list = IBus.PropList()
-
-        debug("Create UniEmoji engine OK")
+        logger.info('Create UniEmojiIBusEngine: OK')
 
     def set_lookup_table_cursor_pos_in_current_page(self, index):
         """Set the cursor in the lookup table to index in the current page.
@@ -96,12 +107,14 @@ class UniEmojiIBusEngine(IBus.Engine):
             self.commit_candidate()
 
     def do_process_key_event(self, keyval, keycode, state):
-        debug("process_key_event(%04x, %04x, %04x)" % (keyval, keycode, state))
-
         # ignore key release events
         is_press = ((state & IBus.ModifierType.RELEASE_MASK) == 0)
         if not is_press:
+            logger.debug('key released: keyval=%04x, keycode=%04x[%r], state=%04x',
+                         keyval, keycode, chr(keycode), state)
             return False
+        logger.debug('process_key_event(keyval=%04x, keycode=%04x[%r], state=%04x) (key down)',
+                     keyval, keycode, chr(keycode), state)
 
         if self.preedit_string:
             if keyval in (IBus.Return, IBus.KP_Enter):
@@ -230,19 +243,19 @@ class UniEmojiIBusEngine(IBus.Engine):
         self.update_lookup_table(self.lookup_table, visible)
 
     def do_focus_in(self):
-        debug("focus_in")
+        logger.debug('focus_in')
         self.register_properties(self.prop_list)
 
     def do_focus_out(self):
-        debug("focus_out")
+        logger.debug('focus_out')
         self.do_reset()
 
     def do_reset(self):
-        debug("reset")
+        logger.debug('reset')
         self.preedit_string = ''
 
     def do_property_activate(self, prop_name):
-        debug("PropertyActivate(%s)" % prop_name)
+        logger.debug('PropertyActivate(%r)', prop_name)
 
     def do_page_up(self):
         return self.page_up()
