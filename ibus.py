@@ -123,36 +123,36 @@ class UniEmojiIBusEngine(IBus.Engine):
                 else:
                     self.commit_string(self.preedit_string)
                 return True
-            elif keyval == IBus.Escape:
+            if keyval == IBus.Escape:
                 self.preedit_string = ''
                 self.update_candidates()
                 return True
-            elif keyval == IBus.BackSpace:
+            if keyval == IBus.BackSpace:
                 self.preedit_string = self.preedit_string[:-1]
                 self.invalidate()
                 return True
-            elif keyval in num_keys:
-                index = num_keys.index(keyval)
-                if self.set_lookup_table_cursor_pos_in_current_page(index):
-                    self.commit_candidate()
-                    return True
-                return False
-            elif keyval in numpad_keys:
-                index = numpad_keys.index(keyval)
-                if self.set_lookup_table_cursor_pos_in_current_page(index):
-                    self.commit_candidate()
-                    return True
-                return False
-            elif keyval in (IBus.Page_Up, IBus.KP_Page_Up, IBus.Left, IBus.KP_Left):
+            # if keyval in num_keys:
+            #     index = num_keys.index(keyval)
+            #     if self.set_lookup_table_cursor_pos_in_current_page(index):
+            #         self.commit_candidate()
+            #         return True
+            #     return False
+            # if keyval in numpad_keys:
+            #     index = numpad_keys.index(keyval)
+            #     if self.set_lookup_table_cursor_pos_in_current_page(index):
+            #         self.commit_candidate()
+            #         return True
+            #     return False
+            if keyval in (IBus.Page_Up, IBus.KP_Page_Up, IBus.Left, IBus.KP_Left):
                 self.page_up()
                 return True
-            elif keyval in (IBus.Page_Down, IBus.KP_Page_Down, IBus.Right, IBus.KP_Right):
+            if keyval in (IBus.Page_Down, IBus.KP_Page_Down, IBus.Right, IBus.KP_Right):
                 self.page_down()
                 return True
-            elif keyval in (IBus.Up, IBus.KP_Up):
+            if keyval in (IBus.Up, IBus.KP_Up):
                 self.cursor_up()
                 return True
-            elif keyval in (IBus.Down, IBus.KP_Down):
+            if keyval in (IBus.Down, IBus.KP_Down):
                 self.cursor_down()
                 return True
 
@@ -161,16 +161,26 @@ class UniEmojiIBusEngine(IBus.Engine):
             # type a bunch of emoji separated by spaces)
             return False
 
-        # Allow typing all ASCII letters and punctuation, except digits
-        if ord(' ') <= keyval < ord('0') or \
-           ord('9') < keyval <= ord('~'):
-            if state & (IBus.ModifierType.CONTROL_MASK | IBus.ModifierType.MOD1_MASK) == 0:
-                self.preedit_string += chr(keyval)
-                self.invalidate()
-                return True
-        else:
-            if keyval < 128 and self.preedit_string:
-                self.commit_string(self.preedit_string)
+        # # Allow typing all ASCII letters and punctuation, except digits
+        # if ord(' ') <= keyval < ord('0') or \
+        #    ord('9') < keyval <= ord('~'):
+        #     if state & (IBus.ModifierType.CONTROL_MASK | IBus.ModifierType.MOD1_MASK) == 0:
+        #         self.preedit_string += chr(keyval)
+        #         self.invalidate()
+        #         return True
+        # else:
+        #     if keyval < 128 and self.preedit_string:
+        #         self.commit_string(self.preedit_string)
+
+        # allow everything, including numbers:
+        if ord(' ') <= keyval <= ord('~') and \
+           state & (IBus.ModifierType.CONTROL_MASK | IBus.ModifierType.MOD1_MASK) == 0:
+            self.preedit_string += chr(keyval)
+            self.invalidate()
+            return True
+
+        if keyval < 128 and self.preedit_string:
+            self.commit_string(self.preedit_string)
 
         return False
 
