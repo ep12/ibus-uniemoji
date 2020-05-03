@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 # -*- coding: utf-8 -*-
 # UniEmoji: ibus engine for unicode emoji and symbols by name
 #
@@ -20,16 +21,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+import getopt
+import inspect
+import locale
+import logging
+import os
+import sys
+
 import gi
 gi.require_version('IBus', '1.0')
+# pylint: disable=wrong-import-position
 from gi.repository import IBus
 from gi.repository import GLib
 from gi.repository import GObject
-
-import os
-import sys
-import getopt
-import locale
 
 from uniemoji import UniEmoji
 
@@ -45,7 +49,6 @@ num_keys = []
 for n in range(1, 10):
     num_keys.append(getattr(IBus, str(n)))
 num_keys.append(getattr(IBus, '0'))
-del n
 
 numpad_keys = []
 for n in range(1, 10):
@@ -53,13 +56,17 @@ for n in range(1, 10):
 numpad_keys.append(getattr(IBus, 'KP_0'))
 del n
 
+
 ###########################################################################
 # the engine
 class UniEmojiIBusEngine(IBus.Engine):
+    # pylint:disable=arguments-differ
+
     __gtype_name__ = 'UniEmojiIBusEngine'
 
     def __init__(self):
         super(UniEmojiIBusEngine, self).__init__()
+        self.candidates = []
         self.uniemoji = UniEmoji()
         self.is_invalidate = False
         self.preedit_string = ''
@@ -69,10 +76,10 @@ class UniEmojiIBusEngine(IBus.Engine):
         debug("Create UniEmoji engine OK")
 
     def set_lookup_table_cursor_pos_in_current_page(self, index):
-        '''Sets the cursor in the lookup table to index in the current page
+        """Set the cursor in the lookup table to index in the current page.
 
         Returns True if successful, False if not.
-        '''
+        """
         page_size = self.lookup_table.get_page_size()
         if index > page_size:
             return False
@@ -211,7 +218,7 @@ class UniEmojiIBusEngine(IBus.Engine):
         self.update_auxiliary_text(text, preedit_len > 0)
 
         attrs.append(IBus.Attribute.new(IBus.AttrType.UNDERLINE,
-                IBus.AttrUnderline.SINGLE, 0, preedit_len))
+                                        IBus.AttrUnderline.SINGLE, 0, preedit_len))
         text = IBus.Text.new_from_string(self.preedit_string)
         text.set_attributes(attrs)
         self.update_preedit_text(text, preedit_len, preedit_len > 0)
@@ -249,20 +256,18 @@ class UniEmojiIBusEngine(IBus.Engine):
     def do_cursor_down(self):
         return self.cursor_down()
 
+
 ###########################################################################
 # the app (main interface to ibus)
 class IMApp:
     def __init__(self, exec_by_ibus):
-        if not exec_by_ibus:
-            global debug_on
-            debug_on = True
         self.mainloop = GLib.MainLoop()
         self.bus = IBus.Bus()
-        self.bus.connect("disconnected", self.bus_disconnected_cb)
+        self.bus.connect('disconnected', self.bus_disconnected_cb)
         self.factory = IBus.Factory.new(self.bus.get_connection())
-        self.factory.add_engine("uniemoji", GObject.type_from_name("UniEmojiIBusEngine"))
+        self.factory.add_engine('uniemoji', GObject.type_from_name('UniEmojiIBusEngine'))
         if exec_by_ibus:
-            self.bus.request_name("org.freedesktop.IBus.UniEmoji", 0)
+            self.bus.request_name('org.freedesktop.IBus.UniEmoji', 0)
         else:
             xml_path = os.path.join(__base_dir__, 'uniemoji.xml')
             if os.path.exists(xml_path):
@@ -284,23 +289,24 @@ def launch_engine(exec_by_ibus):
     IBus.init()
     IMApp(exec_by_ibus).run()
 
-def print_help(out, v = 0):
-    print("-i, --ibus             executed by IBus.", file=out)
-    print("-h, --help             show this message.", file=out)
-    print("-d, --daemonize        daemonize ibus", file=out)
+def print_help(out, v=0):
+    print('-i, --ibus             executed by IBus.', file=out)
+    print('-h, --help             show this message.', file=out)
+    print('-d, --daemonize        daemonize ibus', file=out)
     sys.exit(v)
+
 
 def main():
     try:
-        locale.setlocale(locale.LC_ALL, "")
-    except:
-        pass
+        locale.setlocale(locale.LC_ALL, '')
+    except Exception:
+        logger.error('Could not set locale LC_ALL=""')
 
     exec_by_ibus = False
     daemonize = False
 
-    shortopt = "ihd"
-    longopt = ["ibus", "help", "daemonize"]
+    shortopt = 'ihd'
+    longopt = ['ibus', 'help', 'daemonize']
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], shortopt, longopt)
@@ -308,14 +314,14 @@ def main():
         print_help(sys.stderr, 1)
 
     for o, a in opts:
-        if o in ("-h", "--help"):
+        if o in ('-h', '--help'):
             print_help(sys.stdout)
-        elif o in ("-d", "--daemonize"):
+        elif o in ('-d', '--daemonize'):
             daemonize = True
-        elif o in ("-i", "--ibus"):
+        elif o in ('-i', '--ibus'):
             exec_by_ibus = True
         else:
-            print("Unknown argument: %s" % o, file=sys.stderr)
+            print('Unknown argument: %s' % o, file=sys.stderr)
             print_help(sys.stderr, 1)
 
     if daemonize:
@@ -324,5 +330,6 @@ def main():
 
     launch_engine(exec_by_ibus)
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()
