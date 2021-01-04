@@ -123,6 +123,7 @@ VALID_RANGES = (
     (0xfdfc, 0xfdfc), # RIAL SIGN
     (0xfe69, 0xfe69), # SMALL DOLLAR SIGN
     (0xff01, 0xff60), # Fullwidth symbols and currency signs
+    (0x1fa70, 0x1faff), # Symbols and Pictographs Extended-A
     (0x1f300, 0x1f5ff), # Miscellaneous Symbols and Pictographs
     (0x1f600, 0x1f64f), # Emoticons
     (0x1f650, 0x1f67f), # Ornamental Dingbats
@@ -225,7 +226,7 @@ class UniEmoji:
                                        encoding='utf-8'))
         for emoji_info in emojione_data.values():
 
-            codepoints = emoji_info['code_points']['output']
+            codepoints = emoji_info['code_points']['fully_qualified']
 
             unicode_str = ''.join(chr(int(codepoint, 16)) for codepoint in codepoints.split('-'))
             emoji_shortname = emoji_info['shortname'][1:-1]
