@@ -310,7 +310,7 @@ class UniEmoji:
                     for k, v in custom_table.items():
                         self.table[k] = UniEmojiChar(v, is_custom=True)
 
-    def _filter(self, query, limit=100):
+    def _filter(self, query, limit=50, uppercase_first: bool = False):
         if len(self.table) <= 10:
             # this only happens if something went wrong; it's our cheap way of displaying errors
             return [[0, 0, message] for message in self.table]
@@ -427,7 +427,7 @@ class UniEmoji:
 
         # The first two fields are sorted in reverse.
         # The third text field is sorted by the length of the string, then alphabetically.
-        matched.sort(key=lambda x: (len(x[2]), x[2]))
+        matched.sort(key=lambda x: (len(x[2]), x[2].lower(), x[2][0].isupper() != uppercase_first))
         matched.sort(key=lambda x: (x[0], x[1]), reverse=True)
         return matched[:limit]
 
@@ -457,7 +457,8 @@ class UniEmoji:
 
         # Look for a fuzzy match against a description
         # for level, score, name, candidate_type in self._filter(query_string.lower()):
-        for _, _, name, candidate_type in self._filter(query_string.lower()):
+        for _, _, name, candidate_type in self._filter(query_string.lower(),
+                                                       uppercase_first=query_string[0].isupper()):
             uniemoji_char = self.table[name]
 
             # Since we have several sources (UnicodeData.txt, EmojiOne),
